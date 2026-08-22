@@ -38,7 +38,7 @@ public class OpenApiConfig {
             }
         } else {
             Server localhostServer = new Server();
-            localhostServer.setUrl("http://localhost:9292" + contextPath);
+            localhostServer.setUrl("http://localhost:8080" + contextPath);
             localhostServer.setDescription("Local Development Server");
             servers.add(localhostServer);
         }
@@ -51,9 +51,9 @@ public class OpenApiConfig {
 
         return new OpenAPI()
                 .info(new Info()
-                        .title("Senegal Licence Platform API")
+                        .title("SenInsight API")
                         .version("1.0.0")
-                        .description("API de gestion des agréments au Sénégal"))
+                        .description("API de gestion des données statistiques du Sénégal"))
                 .servers(servers)
                 .components(new Components()
                         .addSecuritySchemes("bearerAuth", bearerScheme))
