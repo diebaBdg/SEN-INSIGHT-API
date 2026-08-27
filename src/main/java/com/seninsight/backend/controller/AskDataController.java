@@ -9,6 +9,12 @@ import com.seninsight.backend.repository.AskHistoryRepository;
 import com.seninsight.backend.repository.ConversationRepository;
 import com.seninsight.backend.repository.IndicatorSeriesRepository;
 import com.seninsight.backend.repository.RegionRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -21,7 +27,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/ask")
-@Tag(name = "Copilote IA (AskData)")
+@Tag(name = "Copilote IA (AskData)", description = "Posez des questions en lang naturel sur les données statistiques du Sénégal et obtenez des analyses")
 public class AskDataController {
 
     private final AskHistoryRepository askRepo;
@@ -39,6 +45,12 @@ public class AskDataController {
         this.regionRepo = regionRepo;
     }
 
+    @Operation(summary = "Poser une question en lang naturel", description = "Soumet une question au copilote IA et retourne une analyse, des points de données et des sources.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Analyse générée avec succès",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "400", description = "Requête invalide", content = @Content)
+    })
     @PostMapping("/query")
     public Map<String, Object> query(@Valid @RequestBody Map<String, String> body, Authentication auth) {
         UUID userId = (UUID) auth.getPrincipal();
@@ -76,6 +88,12 @@ public class AskDataController {
         );
     }
 
+    @Operation(summary = "Analyser une région", description = "Produit une analyse synthétique d'une région à partir de plusieurs indicateurs clés.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Analyse de la région générée",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "404", description = "Région non trouvée", content = @Content)
+    })
     @PostMapping("/analyze-region")
     public Map<String, Object> analyzeRegion(@Valid @RequestBody Map<String, String> body, Authentication auth) {
         UUID userId = (UUID) auth.getPrincipal();
@@ -114,6 +132,11 @@ public class AskDataController {
         return analysis;
     }
 
+    @Operation(summary = "Suggestions de questions", description = "Retourne une liste de questions suggérées pour guider l'utilisateur.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Liste des suggestions",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = List.class)))
+    })
     @GetMapping("/suggestions")
     public List<String> getSuggestions() {
         return List.of(
@@ -126,16 +149,27 @@ public class AskDataController {
         );
     }
 
+    @Operation(summary = "Historique des questions", description = "Retourne l'historique paginé des questions posées par l'utilisateur connecté (ou un utilisateur spécifié).")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Historique paginé",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Page.class)))
+    })
     @GetMapping("/history")
-    public Page<AskHistory> getHistory(@RequestParam(required = false) UUID userId,
-                                        @RequestParam(defaultValue = "0") int page,
-                                        @RequestParam(defaultValue = "20") int size,
-                                        Authentication auth) {
+    public Page<AskHistory> getHistory(
+            @Parameter(description = "Filtrer par utilisateur (optionnel, admin uniquement)") @RequestParam(required = false) UUID userId,
+            @Parameter(description = "Numéro de page (0-indexé)") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Taille de la page") @RequestParam(defaultValue = "20") int size,
+            Authentication auth) {
         UUID uid = userId != null ? userId : (UUID) auth.getPrincipal();
         Pageable pageable = PageRequest.of(page, size);
         return askRepo.findByUserIdOrderByCreatedAtDesc(uid, pageable);
     }
 
+    @Operation(summary = "Lister les conversations", description = "Retourne toutes les conversations de l'utilisateur connecté, triées par date de mise à jour décroissante.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Liste des conversations",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = List.class)))
+    })
     @GetMapping("/conversations")
     public List<Conversation> getConversations(Authentication auth) {
         UUID userId = (UUID) auth.getPrincipal();

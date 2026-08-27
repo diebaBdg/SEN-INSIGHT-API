@@ -6,6 +6,12 @@ import com.seninsight.backend.exception.ResourceNotFoundException;
 import com.seninsight.backend.repository.IndicatorRepository;
 import com.seninsight.backend.repository.IndicatorSeriesRepository;
 import com.seninsight.backend.repository.RegionRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -17,7 +23,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/export")
-@Tag(name = "Export & Données brutes")
+@Tag(name = "Export & Données brutes", description = "Exportez les séries d'indicateurs et les données régionales en JSON ou CSV")
 public class ExportController {
 
     private final IndicatorRepository indicatorRepo;
@@ -32,9 +38,16 @@ public class ExportController {
         this.regionRepo = regionRepo;
     }
 
+    @Operation(summary = "Exporter les séries d'un indicateur", description = "Exporte toutes les séries temporelles d'un indicateur au format JSON ou CSV.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Export généré avec succès",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "404", description = "Indicateur non trouvé", content = @Content)
+    })
     @GetMapping("/indicators")
-    public ResponseEntity<?> exportIndicators(@RequestParam String code,
-                                               @RequestParam(defaultValue = "json") String format) {
+    public ResponseEntity<?> exportIndicators(
+            @Parameter(description = "Code de l'indicateur à exporter", required = true) @RequestParam String code,
+            @Parameter(description = "Format d'export : json ou csv", example = "json") @RequestParam(defaultValue = "json") String format) {
         indicatorRepo.findByCode(code)
                 .orElseThrow(() -> new ResourceNotFoundException("Indicateur non trouvé: " + code));
 
@@ -62,9 +75,16 @@ public class ExportController {
                 .toList());
     }
 
+    @Operation(summary = "Exporter une région", description = "Exporte les informations d'une région au format JSON ou CSV.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Export généré avec succès",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Region.class))),
+            @ApiResponse(responseCode = "404", description = "Région non trouvée", content = @Content)
+    })
     @GetMapping("/regions/{id}")
-    public ResponseEntity<?> exportRegion(@PathVariable String id,
-                                           @RequestParam(defaultValue = "json") String format) {
+    public ResponseEntity<?> exportRegion(
+            @Parameter(description = "Identifiant de la région", required = true) @PathVariable String id,
+            @Parameter(description = "Format d'export : json ou csv", example = "json") @RequestParam(defaultValue = "json") String format) {
         Region region = regionRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Région non trouvée: " + id));
 

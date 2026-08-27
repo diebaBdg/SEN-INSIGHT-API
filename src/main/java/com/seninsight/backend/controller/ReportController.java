@@ -4,6 +4,12 @@ import com.seninsight.backend.entity.Report;
 import com.seninsight.backend.exception.ResourceNotFoundException;
 import com.seninsight.backend.repository.ReportRepository;
 import com.seninsight.backend.repository.RegionRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -20,7 +26,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/reports")
-@Tag(name = "Rapports")
+@Tag(name = "Rapports", description = "Générez, consultez, téléchargez et partagez des rapports analytiques")
 public class ReportController {
 
     private final ReportRepository reportRepo;
@@ -31,6 +37,12 @@ public class ReportController {
         this.regionRepo = regionRepo;
     }
 
+    @Operation(summary = "Générer un rapport", description = "Crée un rapport analytique pour une région et une période données, incluant les indicateurs sélectionnés.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Rapport généré avec succès",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))),
+            @ApiResponse(responseCode = "400", description = "Requête invalide", content = @Content)
+    })
     @PostMapping("/generate")
     public Report generateReport(@Valid @RequestBody Map<String, Object> body, Authentication auth) {
         UUID userId = (UUID) auth.getPrincipal();
@@ -68,26 +80,46 @@ public class ReportController {
         return report;
     }
 
+    @Operation(summary = "Lister les rapports", description = "Retourne les rapports de l'utilisateur connecté, paginés et triés par date de création décroissante.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Liste paginée des rapports",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Page.class)))
+    })
     @GetMapping
-    public Page<Report> listReports(@RequestParam(defaultValue = "0") int page,
-                                     @RequestParam(defaultValue = "20") int size,
-                                     Authentication auth) {
+    public Page<Report> listReports(
+            @Parameter(description = "Numéro de page (0-indexé)") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Taille de la page") @RequestParam(defaultValue = "20") int size,
+            Authentication auth) {
         UUID userId = (UUID) auth.getPrincipal();
         Pageable pageable = PageRequest.of(page, size);
         return reportRepo.findByUserIdOrderByCreatedAtDesc(userId, pageable);
     }
 
+    @Operation(summary = "Obtenir un rapport par ID", description = "Retourne les détails d'un rapport appartenant à l'utilisateur connecté.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Rapport trouvé",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))),
+            @ApiResponse(responseCode = "404", description = "Rapport non trouvé", content = @Content)
+    })
     @GetMapping("/{id}")
-    public Report getReport(@PathVariable UUID id, Authentication auth) {
+    public Report getReport(
+            @Parameter(description = "Identifiant du rapport", required = true) @PathVariable UUID id, Authentication auth) {
         UUID userId = (UUID) auth.getPrincipal();
         return reportRepo.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Rapport non trouvé"));
     }
 
+    @Operation(summary = "Télécharger un rapport", description = "Télécharge un rapport au format PDF ou CSV.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Fichier téléchargé",
+                    content = @Content(mediaType = "application/octet-stream")),
+            @ApiResponse(responseCode = "404", description = "Rapport non trouvé", content = @Content)
+    })
     @GetMapping("/{id}/download")
-    public ResponseEntity<byte[]> downloadReport(@PathVariable UUID id,
-                                                  @RequestParam(defaultValue = "pdf") String format,
-                                                  Authentication auth) {
+    public ResponseEntity<byte[]> downloadReport(
+            @Parameter(description = "Identifiant du rapport", required = true) @PathVariable UUID id,
+            @Parameter(description = "Format de téléchargement : pdf ou csv", example = "pdf") @RequestParam(defaultValue = "pdf") String format,
+            Authentication auth) {
         UUID userId = (UUID) auth.getPrincipal();
         Report report = reportRepo.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Rapport non trouvé"));
@@ -119,8 +151,15 @@ public class ReportController {
                 .body(data);
     }
 
+    @Operation(summary = "Partager un rapport", description = "Génère un token de partage public pour un rapport.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Lien de partage généré",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "404", description = "Rapport non trouvé", content = @Content)
+    })
     @PostMapping("/{id}/share")
-    public Map<String, Object> shareReport(@PathVariable UUID id, Authentication auth) {
+    public Map<String, Object> shareReport(
+            @Parameter(description = "Identifiant du rapport", required = true) @PathVariable UUID id, Authentication auth) {
         UUID userId = (UUID) auth.getPrincipal();
         Report report = reportRepo.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Rapport non trouvé"));
@@ -130,8 +169,15 @@ public class ReportController {
         return Map.of("shareToken", token, "message", "Lien de partage généré");
     }
 
+    @Operation(summary = "Supprimer un rapport", description = "Supprime définitivement un rapport appartenant à l'utilisateur connecté.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Rapport supprimé",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "404", description = "Rapport non trouvé", content = @Content)
+    })
     @DeleteMapping("/{id}")
-    public Map<String, Object> deleteReport(@PathVariable UUID id, Authentication auth) {
+    public Map<String, Object> deleteReport(
+            @Parameter(description = "Identifiant du rapport", required = true) @PathVariable UUID id, Authentication auth) {
         UUID userId = (UUID) auth.getPrincipal();
         Report report = reportRepo.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Rapport non trouvé"));

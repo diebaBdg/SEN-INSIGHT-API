@@ -7,6 +7,12 @@ import com.seninsight.backend.exception.BadRequestException;
 import com.seninsight.backend.exception.ResourceNotFoundException;
 import com.seninsight.backend.repository.AppUserRepository;
 import com.seninsight.backend.repository.InvitationRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,7 +26,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/users")
-@Tag(name = "Utilisateurs")
+@Tag(name = "Utilisateurs", description = "Gestion du profil utilisateur et invitation de nouveaux membres (admin)")
 public class UserController {
 
     private final AppUserRepository userRepo;
@@ -31,6 +37,12 @@ public class UserController {
         this.invitationRepo = invitationRepo;
     }
 
+    @Operation(summary = "Obtenir mon profil", description = "Retourne les informations de l'utilisateur connecté.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Profil récupéré",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserDto.class))),
+            @ApiResponse(responseCode = "404", description = "Utilisateur non trouvé", content = @Content)
+    })
     @GetMapping("/me")
     public UserDto getProfile(Authentication auth) {
         UUID userId = (UUID) auth.getPrincipal();
@@ -39,6 +51,12 @@ public class UserController {
         return toDto(user);
     }
 
+    @Operation(summary = "Mettre à jour mon profil", description = "Met à jour le nom, l'organisation et le téléphone de l'utilisateur connecté.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Profil mis à jour",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserDto.class))),
+            @ApiResponse(responseCode = "404", description = "Utilisateur non trouvé", content = @Content)
+    })
     @PutMapping("/me")
     public UserDto updateProfile(@Valid @RequestBody UpdateProfileRequest req, Authentication auth) {
         UUID userId = (UUID) auth.getPrincipal();
@@ -51,12 +69,25 @@ public class UserController {
         return toDto(user);
     }
 
+    @Operation(summary = "Lister tous les utilisateurs", description = "Retourne tous les utilisateurs. Réservé aux administrateurs.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Liste des utilisateurs",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserDto.class))),
+            @ApiResponse(responseCode = "403", description = "Accès refusé — rôle admin requis", content = @Content)
+    })
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public List<UserDto> listUsers() {
         return userRepo.findAll().stream().map(this::toDto).toList();
     }
 
+    @Operation(summary = "Inviter un nouvel utilisateur", description = "Envoie une invitation à rejoindre la plateforme avec un rôle spécifié. Réservé aux administrateurs.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Invitation envoyée",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "400", description = "Un compte existe déjà avec cet email", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Accès refusé — rôle admin requis", content = @Content)
+    })
     @PostMapping("/invite")
     @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Object> invite(@Valid @RequestBody InviteRequest req, Authentication auth) {

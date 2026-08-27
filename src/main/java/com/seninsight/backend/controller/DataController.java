@@ -4,6 +4,11 @@ import com.seninsight.backend.repository.IndicatorRepository;
 import com.seninsight.backend.repository.IndicatorSeriesRepository;
 import com.seninsight.backend.repository.RegionRepository;
 import com.seninsight.backend.repository.SourceRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -13,7 +18,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/data")
-@Tag(name = "Données & Pipeline")
+@Tag(name = "Données & Pipeline", description = "État du pipeline de données et import de nouvelles données (admin)")
 public class DataController {
 
     private final IndicatorRepository indicatorRepo;
@@ -31,6 +36,11 @@ public class DataController {
         this.sourceRepo = sourceRepo;
     }
 
+    @Operation(summary = "État du pipeline de données", description = "Retourne l'état de santé du pipeline et le nombre d'enregistrements par entité.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "État du pipeline",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Map.class)))
+    })
     @GetMapping("/health")
     public Map<String, Object> health() {
         Map<String, Object> status = new LinkedHashMap<>();
@@ -45,6 +55,12 @@ public class DataController {
         return status;
     }
 
+    @Operation(summary = "Importer des données", description = "Importe un lot de données dans le pipeline. Réservé aux administrateurs.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Données importées avec succès",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "403", description = "Accès refusé — rôle admin requis", content = @Content)
+    })
     @PostMapping("/import")
     @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Object> importData(@RequestBody Map<String, Object> body) {
