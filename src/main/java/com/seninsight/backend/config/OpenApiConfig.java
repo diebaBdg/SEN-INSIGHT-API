@@ -19,6 +19,9 @@ public class OpenApiConfig {
     @Value("${server.servlet.context-path:/}")
     private String contextPath;
 
+    @Value("${server.port:8080}")
+    private int serverPort;
+
     @Value("${spring.profiles.active:dev}")
     private String activeProfile;
 
@@ -38,7 +41,7 @@ public class OpenApiConfig {
             }
         } else {
             Server localhostServer = new Server();
-            localhostServer.setUrl("http://localhost:8080" + contextPath);
+            localhostServer.setUrl("http://localhost:" + serverPort + contextPath);
             localhostServer.setDescription("Local Development Server");
             servers.add(localhostServer);
         }
