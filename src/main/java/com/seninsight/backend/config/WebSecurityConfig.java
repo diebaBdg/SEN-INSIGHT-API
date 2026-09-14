@@ -43,9 +43,9 @@ public class WebSecurityConfig {
             "/actuator/**",
 
             // Endpoints publics
-            "/api/regions/**",
-            "/api/ask/history/**",
-            "/api/ask/suggestions/**",
+            "/regions/**",
+            "/ask/history/**",
+            "/ask/suggestions/**",
             "/reports/**",
             "/indicators/**",
             "/export/**",
