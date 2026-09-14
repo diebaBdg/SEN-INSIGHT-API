@@ -13,6 +13,6 @@ public class SenInsightBackendApplication {
 	private static void displayStartupInfo() {
 		System.out.println("\n" +
 				"SenInsight Backend API démarrée !\n" +
-				"API Docs: http://localhost:8080/api/swagger-ui.html");
+				"API Docs: http://localhost:8081/api/swagger-ui.html");
 	}
 }
